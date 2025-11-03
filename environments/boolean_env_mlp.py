@@ -1,4 +1,4 @@
-import torch
+from typing import Tuple, Dict, Any
 import sympy
 from sympy.logic.boolalg import And, Or, Not, Equivalent, Implies, Xor
 import numpy as np
@@ -6,34 +6,34 @@ from multiprocessing import Process, Queue
 
 from .base_env import BaseBooleanEnv, _apply_rule_wrapper
 
-def _simplify_logic(expr):
+def _simplify_logic(expr) -> sympy.Basic:
     return sympy.simplify_logic(expr)
 
-def _simplify_logic_dnf(expr):
+def _simplify_logic_dnf(expr) -> sympy.Basic:
     return sympy.simplify_logic(expr, form='dnf')
 
-def _simplify_logic_cnf(expr):
+def _simplify_logic_cnf(expr) -> sympy.Basic:
     return sympy.simplify_logic(expr, form='cnf')
 
-def _to_anf(expr):
+def _to_anf(expr) -> sympy.Basic:
     return sympy.logic.boolalg.to_anf(expr)
 
-def _to_cnf(expr):
+def _to_cnf(expr) -> sympy.Basic:
     return sympy.logic.boolalg.to_cnf(expr)
 
-def _to_dnf(expr):
+def _to_dnf(expr) -> sympy.Basic:
     return sympy.logic.boolalg.to_dnf(expr)
 
-def _to_nnf(expr):
+def _to_nnf(expr) -> sympy.Basic:
     return sympy.logic.boolalg.to_nnf(expr)
 
 class BooleanSimplificationEnv(BaseBooleanEnv):
-    def __init__(self, max_expression_depth, max_literals, max_steps):
+    def __init__(self, max_expression_depth: int, max_literals: int, max_steps: int):
         super().__init__(max_expression_depth, max_literals, max_steps)
         self.action_space_size = len(self._get_available_rules())
         self.reset()
 
-    def _get_state(self):
+    def _get_state(self) -> np.ndarray:
         count_literals = len(self.current_expression.atoms(sympy.Symbol))
         count_and = len(self.current_expression.atoms(And))
         count_or = len(self.current_expression.atoms(Or))
@@ -42,7 +42,7 @@ class BooleanSimplificationEnv(BaseBooleanEnv):
         count_implies = len(self.current_expression.atoms(Implies))
         count_xor = len(self.current_expression.atoms(Xor))
 
-        def get_depth(expr):
+        def get_depth(expr) -> int:
             if not hasattr(expr, 'args') or not expr.args:
                 return 0
             return 1 + max(get_depth(arg) for arg in expr.args) if expr.args else 0
@@ -53,10 +53,10 @@ class BooleanSimplificationEnv(BaseBooleanEnv):
         state = np.array([count_literals, count_and, count_or, count_not, count_equivalent, count_implies, count_xor, depth, current_complexity])
         return state
 
-    def get_state_size(self):
+    def get_state_size(self) -> int:
         return len(self._get_state())
 
-    def get_action_size(self):
+    def get_action_size(self) -> int:
         return len(self._get_available_rules())
 
     def _get_available_rules(self):
@@ -70,7 +70,7 @@ class BooleanSimplificationEnv(BaseBooleanEnv):
             _to_nnf,
         ]
 
-    def step(self, action):
+    def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict[str, Any]]:
         self.steps_taken += 1
 
         rules = self._get_available_rules()
@@ -99,13 +99,6 @@ class BooleanSimplificationEnv(BaseBooleanEnv):
         self.history.append(self.current_expression)
         new_complexity = self._get_complexity(self.current_expression)
 
-        # the reward function is the philosophical core of the agent. early versions
-        # suffered from reward hacking, where the agent would increase complexity to
-        # farm rewards from later, trivial simplifications. this final design is
-        # direct and robust: it rewards any reduction in complexity, gives a large
-        # bonus for reaching the known optimum, and penalizes inefficiency or
-        # complexity increases. this avoids loopholes and directly incentivizes the
-        # desired emergent behavior of efficient simplification.
         reward = 0.0
         done = False
 

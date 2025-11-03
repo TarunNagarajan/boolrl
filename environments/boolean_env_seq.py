@@ -1,11 +1,12 @@
+from typing import Tuple, Dict, Any
 import sympy
-from sympy.logic.boolalg import And, Or, Not, Equivalent, Implies, Xor
+from sympy.logic.boolalg import And, Or, Not, Equivalent, Implies, Xor, BooleanFunction
 import numpy as np
 
 from .base_env import BaseBooleanEnv
 
 class BooleanSimplificationEnvSeq(BaseBooleanEnv):
-    def __init__(self, max_expression_depth, max_literals, max_steps, max_seq_len=128):
+    def __init__(self, max_expression_depth: int, max_literals: int, max_steps: int, max_seq_len: int = 128):
         super().__init__(max_expression_depth, max_literals, max_steps)
         self.max_seq_len = max_seq_len
 
@@ -14,10 +15,10 @@ class BooleanSimplificationEnvSeq(BaseBooleanEnv):
         self.vocab = {**self.op_map, **self.literal_map}
         self.vocab_size = len(self.vocab) + 1  # +1 for padding token
 
-        self.action_space_size = 7 # From the original MLP environment
+        self.action_space_size = 7 
         self.reset()
 
-    def _traverse_and_tokenize(self, expr):
+    def _traverse_and_tokenize(self, expr) -> list:
         tokens = []
         def _traverse(sub_expr):
             if isinstance(sub_expr, sympy.Symbol):
@@ -26,26 +27,25 @@ class BooleanSimplificationEnvSeq(BaseBooleanEnv):
                 tokens.append(self.op_map.get(type(sub_expr), 0))
                 for arg in sub_expr.args:
                     _traverse(arg)
-            else: # True/False
+            else: 
                 tokens.append(self.op_map.get(type(sub_expr), 0))
         _traverse(expr)
         return tokens
 
-    def _get_state(self):
+    def _get_state(self) -> np.ndarray:
         tokens = self._traverse_and_tokenize(self.current_expression)
         padded_tokens = np.zeros(self.max_seq_len, dtype=np.int32)
         seq_len = min(len(tokens), self.max_seq_len)
         padded_tokens[:seq_len] = tokens[:seq_len]
         return padded_tokens
 
-    def get_state_size(self):
+    def get_state_size(self) -> int:
         return self.max_seq_len
 
-    def get_action_size(self):
+    def get_action_size(self) -> int:
         return self.action_space_size
 
     def _get_available_rules(self):
-        # These are the global simplification rules from the original MLP environment
         return [
             sympy.simplify_logic,
             lambda e: sympy.simplify_logic(e, form='dnf'),
@@ -56,8 +56,7 @@ class BooleanSimplificationEnvSeq(BaseBooleanEnv):
             sympy.logic.boolalg.to_nnf,
         ]
 
-    def step(self, action):
-        # This step function is identical to the original MLP environment
+    def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict[str, Any]]:
         self.steps_taken += 1
 
         rules = self._get_available_rules()
@@ -66,7 +65,6 @@ class BooleanSimplificationEnvSeq(BaseBooleanEnv):
 
         old_complexity = self._get_complexity(self.current_expression)
 
-        # Using the same multiprocessing wrapper as the base class for safety
         from .base_env import _apply_rule_wrapper
         from multiprocessing import Queue, Process
 

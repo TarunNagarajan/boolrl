@@ -1,9 +1,7 @@
 import torch
-from boolean_env_seq import BooleanSimplificationEnvSeq
-from agent_seq import DQNAgentSeq
-import numpy as np
-import time
-import config
+from boolrl.environments.boolean_env_seq import BooleanSimplificationEnvSeq
+from boolrl.agents.agent_seq import DQNAgentSeq
+from boolrl import config
 
 def test_DQN_SEQ(num_test_episodes=10):
     env = BooleanSimplificationEnvSeq(max_expression_depth=config.MAX_EXPRESSION_DEPTH,
@@ -24,7 +22,7 @@ def test_DQN_SEQ(num_test_episodes=10):
     )
 
     try:
-        agent.qnet_policy.load_state_dict(torch.load('checkpoint_seq.pth', weights_only = True))
+        agent.qnet_policy.load_state_dict(torch.load('checkpoint_seq.pth', weights_only=True))
         agent.qnet_policy.eval()
         agent.epsilon = 0.0
         print(f"{COLOR_GREEN}Successfully loaded checkpoint_seq.pth{COLOR_RESET}")
@@ -87,4 +85,4 @@ COLOR_RED = "\u001b[91m"
 COLOR_RESET = "\u001b[0m"
 
 if __name__ == "__main__":
-    test_DQN_SEQ(num_test_episodes = 100)
+    test_DQN_SEQ(num_test_episodes=100)

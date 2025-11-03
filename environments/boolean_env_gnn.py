@@ -1,8 +1,8 @@
+from typing import Tuple, Dict, Any
 import torch
 import sympy
 from sympy.logic.boolalg import BooleanFunction, And, Or, Not, Equivalent, Implies, Xor
 import numpy as np
-import random
 from multiprocessing import Process, Queue
 from torch_geometric.data import Data
 
@@ -13,7 +13,7 @@ def _apply_sympy_replace(expr, pattern, replacement):
     return result
 
 class BooleanSimplificationEnvGNN(BaseBooleanEnv):
-    def __init__(self, max_expression_depth, max_literals, max_steps):
+    def __init__(self, max_expression_depth: int, max_literals: int, max_steps: int):
         super().__init__(max_expression_depth, max_literals, max_steps)
 
         self.NODE_TYPES = [And, Or, Not, Equivalent, Implies, Xor, type(sympy.true), type(sympy.false)] + self.literals
@@ -43,16 +43,10 @@ class BooleanSimplificationEnvGNN(BaseBooleanEnv):
         
         self.reset()
 
-    def _sympy_to_graph(self, expr):
-        # this function translates a sympy expression into a graph representation
-        # suitable for torch_geometric. the goal is to move from a flat, feature-based
-        # state (like in the mlp) to a structural one. each node in the expression's
-        # abstract syntax tree becomes a graph node, and its type is one-hot encoded.
-        # this structural embedding allows the gnn to learn relationships between
-        # operators and literals, a more fundamental approach than simple feature counts.
+    def _sympy_to_graph(self, expr) -> Data:
         nodes, edges, node_map = [], [], {}
 
-        def _add_node(sub_expr, depth):
+        def _add_node(sub_expr, depth: int):
             if sub_expr in node_map:
                 return node_map[sub_expr]
 
@@ -84,12 +78,12 @@ class BooleanSimplificationEnvGNN(BaseBooleanEnv):
 
         return Data(x=x, edge_index=edge_index, num_nodes=len(nodes))
 
-    def _scale_global_features(self, features):
+    def _scale_global_features(self, features: np.ndarray) -> np.ndarray:
         clipped_features = np.clip(features, self.GLOBAL_FEATURE_MIN_VALUES, self.GLOBAL_FEATURE_MAX_VALUES)
         scaled_features = (clipped_features - self.GLOBAL_FEATURE_MIN_VALUES) / (self.GLOBAL_FEATURE_MAX_VALUES - self.GLOBAL_FEATURE_MIN_VALUES + 1e-8)
         return scaled_features
 
-    def _get_state(self):
+    def _get_state(self) -> Data:
         atoms = self.current_expression.atoms()
         count_literals = len(atoms)
         count_and = str(self.current_expression).count('&')
@@ -111,7 +105,7 @@ class BooleanSimplificationEnvGNN(BaseBooleanEnv):
 
         return data
 
-    def step(self, action):
+    def step(self, action: int) -> Tuple[Data, float, bool, Dict[str, Any]]:
         self.steps_taken += 1
 
         rules = self._get_available_rules()
@@ -140,13 +134,6 @@ class BooleanSimplificationEnvGNN(BaseBooleanEnv):
         self.current_expression = result
         new_complexity = self._get_complexity(self.current_expression)
 
-        # the reward function is the philosophical core of the agent. early versions
-        # suffered from reward hacking, where the agent would increase complexity to
-        # farm rewards from later, trivial simplifications. this final design is
-        # direct and robust: it rewards any reduction in complexity, gives a large
-        # bonus for reaching the known optimum, and penalizes inefficiency or
-        # complexity increases. this avoids loopholes and directly incentivizes the
-        # desired emergent behavior of efficient simplification.
         reward = 0.0
         done = False
 
@@ -173,14 +160,14 @@ class BooleanSimplificationEnvGNN(BaseBooleanEnv):
 
         return self._get_state(), reward, done, {'applied_rule': rule_name}
 
-    def get_gnn_input_size(self):
+    def get_gnn_input_size(self) -> int:
         return len(self.NODE_TYPES) + 3
         
-    def get_global_feature_size(self):
+    def get_global_feature_size(self) -> int:
         return len(self.GLOBAL_FEATURE_MIN_VALUES)
 
     def _get_available_rules(self):
         return [(_apply_sympy_replace, name, pattern, replacement) for pattern, replacement, name in self.local_rules]
 
-    def get_action_size(self):
+    def get_action_size(self) -> int:
         return self.action_space_size

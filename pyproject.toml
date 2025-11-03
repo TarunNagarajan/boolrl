@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools"
+
+[project]
+name = "boolrl"
+version = "0.1.0"
+description = "Boolean Expression Simplification using Deep Reinforcement Learning"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "torch>=2.0.0",
+    "sympy>=1.12",
+    "numpy>=1.24.0",
+    "matplotlib>=3.6.0",
+    "torch_geometric>=2.3.0",
+    "tqdm>=4.64.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/TarunNagarajan/boolrl"
+"Bug Reports" = "https://github.com/TarunNagarajan/boolrl/issues"
+"Source" = "https://github.com/TarunNagarajan/boolrl/"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["boolrl*"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]

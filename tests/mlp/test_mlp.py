@@ -1,8 +1,6 @@
 import torch
 from boolrl.environments.boolean_env_mlp import BooleanSimplificationEnv
 from boolrl.agents.agent_mlp import DQNAgent
-import numpy as np
-import time
 from boolrl import config
 
 def test_DQN_MLP(num_test_episodes=10):

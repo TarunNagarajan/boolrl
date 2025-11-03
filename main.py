@@ -1,3 +1,4 @@
+from typing import Union, Dict, Any
 import torch
 from collections import deque
 import time
@@ -13,8 +14,13 @@ from boolrl.environments.boolean_env_gnn import BooleanSimplificationEnvGNN as G
 from boolrl.agents.agent_gnn import DQNAgentGNN as GnnAgent
 from boolrl.environments.boolean_env_seq import BooleanSimplificationEnvSeq as SeqEnv
 from boolrl.agents.agent_seq import DQNAgentSeq as SeqAgent
+from boolrl.environments.base_env import BaseBooleanEnv
+from boolrl.agents import agent_mlp, agent_gnn, agent_seq
 
-def train(agent, env, model_type, save_every=100):
+def train(agent: Union[MlpAgent, GnnAgent, SeqAgent], 
+          env: BaseBooleanEnv, 
+          model_type: str, 
+          save_every: int = 100) -> None:
     scores = deque(maxlen=100)
     all_scores = []
     start_time = time.time()
@@ -65,7 +71,7 @@ def train(agent, env, model_type, save_every=100):
     print(f"Training finished in {end_time - start_time:.2f} seconds.")
     plot_scores(all_scores, model_type)
 
-def plot_scores(scores, model_type):
+def plot_scores(scores: list, model_type: str) -> None:
     avg_scores = [np.mean(scores[max(0, i - 100):i + 1]) for i in range(len(scores))]
 
     plt.style.use('dark_background')
@@ -85,7 +91,7 @@ def plot_scores(scores, model_type):
     ax.legend(fontsize=12)
 
     plt.savefig(f'training_plot_{model_type}.png')
-    plt.show()
+    plt.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -1,17 +1,12 @@
+from typing import Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv, global_mean_pool
+from torch_geometric.data import Data
 
 class GNNQNetwork(nn.Module):
-    # this architecture uses graph attention networks (gat) to process the expression
-    # tree. gat was chosen over simpler graph convolutions because its attention
-    # mechanism can assign different importance to different nodes in the expression,
-    # mirroring the intuition that some sub-expressions are more critical for
-    # simplification. the model processes the graph, pools the node features to get a
-    # graph-level embedding, concatenates global features, and finally passes this
-    # combined vector to an mlp to produce q-values.
-    def __init__(self, gnn_input_size, global_feature_size, hidden_size, action_size):
+    def __init__(self, gnn_input_size: int, global_feature_size: int, hidden_size: int, action_size: int):
         super(GNNQNetwork, self).__init__()
         self.conv1 = GATConv(gnn_input_size, hidden_size, heads=4, dropout=0.2)
         self.bn1 = nn.BatchNorm1d(hidden_size * 4)
@@ -26,7 +21,7 @@ class GNNQNetwork(nn.Module):
         self.bn_fc2 = nn.BatchNorm1d(hidden_size)
         self.fc3 = nn.Linear(hidden_size, action_size)
 
-    def forward(self, data):
+    def forward(self, data: Union[Data, torch.Tensor]) -> torch.Tensor:
         x, edge_index, batch = data.x, data.edge_index, data.batch
         global_features = data.global_features
 

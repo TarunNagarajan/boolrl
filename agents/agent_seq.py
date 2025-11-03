@@ -1,14 +1,14 @@
+from typing import Tuple
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from collections import deque, namedtuple
 import random
 from boolrl.replay_buffer import ReplayBuffer
 
 class QNetworkSeq(nn.Module):
-    def __init__(self, vocab_size, action_size, seed, embedding_dim=32, hidden_size=64):
+    def __init__(self, vocab_size: int, action_size: int, seed: int, embedding_dim: int = 32, hidden_size: int = 64):
         super(QNetworkSeq, self).__init__()
         self.seed = torch.manual_seed(seed)
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
@@ -16,7 +16,7 @@ class QNetworkSeq(nn.Module):
         self.fc1 = nn.Linear(hidden_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, action_size)
 
-    def forward(self, state):
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
         x = self.embedding(state)
         lstm_out, _ = self.lstm(x)
         x = lstm_out[:, -1, :]
@@ -24,7 +24,7 @@ class QNetworkSeq(nn.Module):
         return self.fc2(x)
 
 class DQNAgentSeq:
-    def __init__(self, vocab_size, action_size, seed, hidden_size=64, embedding_dim=32, learning_rate=5e-4, gamma=0.99, tau=1e-3, buffer_size=int(1e5), batch_size=64, update_every=4):
+    def __init__(self, vocab_size: int, action_size: int, seed: int, hidden_size: int = 64, embedding_dim: int = 32, learning_rate: float = 5e-4, gamma: float = 0.99, tau: float = 1e-3, buffer_size: int = int(1e5), batch_size: int = 64, update_every: int = 4):
         self.action_size = action_size
         self.seed = random.seed(seed)
         self.hidden_size = hidden_size
@@ -52,7 +52,7 @@ class DQNAgentSeq:
         self.epsilon_min = 0.01
         self.t_step = 0
 
-    def act(self, state):
+    def act(self, state: np.ndarray) -> int:
         if random.random() < self.epsilon:
             return random.randrange(self.action_size)
 
@@ -64,7 +64,7 @@ class DQNAgentSeq:
 
         return qval_tensor.argmax(1).item()
 
-    def learn(self, experiences):
+    def learn(self, experiences: list) -> None:
         states = torch.from_numpy(np.vstack([e.state for e in experiences])).long().to(self.device)
         actions = torch.from_numpy(np.vstack([e.action for e in experiences])).long().to(self.device)
         rewards = torch.from_numpy(np.vstack([e.reward for e in experiences])).float().to(self.device)
@@ -88,11 +88,11 @@ class DQNAgentSeq:
 
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-    def soft_update(self, policy_model, target_model, tau):
+    def soft_update(self, policy_model: nn.Module, target_model: nn.Module, tau: float) -> None:
         for target_param, policy_param in zip(target_model.parameters(), policy_model.parameters()):
             target_param.data.copy_(tau * policy_param.data + (1.0 - tau) * target_param.data)
 
-    def step(self, state, action, reward, next_state, done):
+    def step(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool) -> None:
         self.memory.add(state, action, reward, next_state, done)
         self.t_step += 1
         if self.t_step % self.update_every == 0 and len(self.memory) >= self.batch_size:

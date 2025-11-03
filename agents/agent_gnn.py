@@ -1,24 +1,25 @@
+from typing import Union
 import random
-from collections import deque, namedtuple
 import torch
 import torch.nn.functional as F
-from torch_geometric.data import Data, DataLoader
+from torch_geometric.data import DataLoader
+from torch_geometric.data.data import Data
 from boolrl.gnn_models import GNNQNetwork
 from boolrl.replay_buffer import ReplayBuffer
 
 class DQNAgentGNN:
     def __init__(self,
-                 gnn_input_size,
-                 global_feature_size,
-                 action_size,
-                 seed,
-                 hidden_size=64,
-                 learning_rate=5e-4,
-                 gamma=0.99,
-                 tau=1e-3,
-                 buffer_size=int(1e5),
-                 batch_size=64,
-                 update_every=4):
+                 gnn_input_size: int,
+                 global_feature_size: int,
+                 action_size: int,
+                 seed: int,
+                 hidden_size: int = 64,
+                 learning_rate: float = 5e-4,
+                 gamma: float = 0.99,
+                 tau: float = 1e-3,
+                 buffer_size: int = int(1e5),
+                 batch_size: int = 64,
+                 update_every: int = 4):
 
         self.action_size = action_size
         self.seed = random.seed(seed)
@@ -44,7 +45,7 @@ class DQNAgentGNN:
         self.epsilon_min = 0.01
         self.t_step = 0
 
-    def act(self, state):
+    def act(self, state: Data) -> int:
         if random.random() < self.epsilon:
             return random.randrange(self.action_size)
 
@@ -56,12 +57,7 @@ class DQNAgentGNN:
 
         return qval_tensor.argmax(1).item()
 
-    def learn(self, experiences):
-        # the dataloader from torch_geometric is used here because it correctly batches
-        # a list of graph objects. standard tensor batching would fail due to the
-        # variable size of node and edge tensors in each graph. this approach
-        # creates a single large graph from the batch, using a `batch` vector
-        # to delineate subgraphs, enabling efficient parallel processing on the gpu.
+    def learn(self, experiences: list) -> None:
         self.optimizer.zero_grad()
 
         current_states_data = [e.state for e in experiences]
@@ -94,11 +90,11 @@ class DQNAgentGNN:
         self.soft_update(self.qnet_policy, self.qnet_target, self.tau)
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-    def soft_update(self, policy_model, target_model, tau):
+    def soft_update(self, policy_model: torch.nn.Module, target_model: torch.nn.Module, tau: float) -> None:
         for target_param, policy_param in zip(target_model.parameters(), policy_model.parameters()):
             target_param.data.copy_(tau * policy_param.data + (1.0 - tau) * target_param.data)
 
-    def step(self, state, action, reward, next_state, done):
+    def step(self, state: Data, action: int, reward: float, next_state: Union[Data, None], done: bool) -> None:
         self.memory.add(state, action, reward, next_state, done)
         self.t_step += 1
 

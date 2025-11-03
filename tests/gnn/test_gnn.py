@@ -1,9 +1,7 @@
 import torch
-from boolean_env_gnn import BooleanSimplificationEnvGNN
-from agent_gnn import DQNAgentGNN
-import numpy as np
-import time
-import config
+from boolrl.environments.boolean_env_gnn import BooleanSimplificationEnvGNN
+from boolrl.agents.agent_gnn import DQNAgentGNN
+from boolrl import config
 
 def test_DQN_GNN(num_test_episodes=10):
     env = BooleanSimplificationEnvGNN(max_expression_depth=config.MAX_EXPRESSION_DEPTH,
@@ -25,7 +23,7 @@ def test_DQN_GNN(num_test_episodes=10):
     )
 
     try:
-        agent.qnet_policy.load_state_dict(torch.load('checkpoint_gnn.pth', weights_only = True))
+        agent.qnet_policy.load_state_dict(torch.load('checkpoint_gnn.pth', weights_only=True))
         agent.qnet_policy.eval()
         agent.epsilon = 0.0
         print(f"{COLOR_GREEN}Successfully loaded checkpoint_gnn.pth{COLOR_RESET}")
@@ -88,4 +86,4 @@ COLOR_RED = "\u001b[91m"
 COLOR_RESET = "\u001b[0m"
 
 if __name__ == "__main__":
-    test_DQN_GNN(num_test_episodes = 100)
+    test_DQN_GNN(num_test_episodes=100)
