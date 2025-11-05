@@ -3,7 +3,7 @@ import random
 import torch
 import torch.nn.functional as F
 from torch_geometric.data import DataLoader
-from torch_geometric.data.data import Data
+from torch_geometric.data import Data
 from boolrl.gnn_models import GNNQNetwork
 from boolrl.replay_buffer import ReplayBuffer
 
@@ -60,26 +60,25 @@ class DQNAgentGNN:
     def learn(self, experiences: list) -> None:
         self.optimizer.zero_grad()
 
-        current_states_data = [e.state for e in experiences]
-        next_states_data = [e.next_state for e in experiences]
-
-        current_states_loader = DataLoader(current_states_data, batch_size=self.batch_size)
-        next_states_loader = DataLoader(next_states_data, batch_size=self.batch_size)
-
+        # Extract all components to tensors directly
         actions = torch.tensor([e.action for e in experiences], dtype=torch.long).to(self.device)
         rewards = torch.tensor([e.reward for e in experiences], dtype=torch.float).to(self.device)
         dones = torch.tensor([e.done for e in experiences], dtype=torch.float).to(self.device)
 
-        for batch in current_states_loader:
-            batch = batch.to(self.device)
-            q_expected_all = self.qnet_policy(batch)
-            q_expected = q_expected_all.gather(1, actions.unsqueeze(1))
+        # Create batches from list of Data objects
+        from torch_geometric.data import Batch
+        current_states_data = [e.state for e in experiences]
+        next_states_data = [e.next_state for e in experiences]
+        
+        current_batch = Batch.from_data_list(current_states_data).to(self.device)
+        next_batch = Batch.from_data_list(next_states_data).to(self.device)
+        
+        q_expected_all = self.qnet_policy(current_batch)
+        q_expected = q_expected_all.gather(1, actions.unsqueeze(1))
 
+        # Process next states to get target Q-values
         with torch.no_grad():
-            for batch in next_states_loader:
-                batch = batch.to(self.device)
-                q_targets_next = self.qnet_target(batch).max(1)[0].unsqueeze(1)
-
+            q_targets_next = self.qnet_target(next_batch).max(1)[0].unsqueeze(1)
             q_targets = rewards.unsqueeze(1) + (self.gamma * q_targets_next * (1 - dones.unsqueeze(1)))
 
         loss = F.mse_loss(q_expected, q_targets)

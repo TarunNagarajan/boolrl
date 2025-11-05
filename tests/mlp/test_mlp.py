@@ -3,6 +3,13 @@ from boolrl.environments.boolean_env_mlp import BooleanSimplificationEnv
 from boolrl.agents.agent_mlp import DQNAgent
 from boolrl import config
 
+COLOR_LAVENDER = "\u001b[95m"
+COLOR_BLUE = "\u001b[94m"
+COLOR_GREEN = "\u001b[92m"
+COLOR_YELLOW = "\u001b[93m"
+COLOR_RED = "\u001b[91m"
+COLOR_RESET = "\u001b[0m"
+
 def test_DQN_MLP(num_test_episodes=10):
     env = BooleanSimplificationEnv(max_expression_depth=config.MAX_EXPRESSION_DEPTH,
                                    max_literals=config.MAX_LITERALS,
@@ -76,13 +83,6 @@ def test_DQN_MLP(num_test_episodes=10):
     print(f"Total Episodes:     {num_test_episodes}")
     print(f"Successful Simplifications: {optimal_count}")
     print(f"Accuracy:           {accuracy:.2f}%{COLOR_RESET}")
-
-COLOR_LAVENDER = "\u001b[95m"
-COLOR_BLUE = "\u001b[94m"
-COLOR_GREEN = "\u001b[92m"
-COLOR_YELLOW = "\u001b[93m"
-COLOR_RED = "\u001b[91m"
-COLOR_RESET = "\u001b[0m"
 
 if __name__ == "__main__":
     test_DQN_MLP(num_test_episodes=250)

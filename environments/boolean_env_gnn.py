@@ -114,7 +114,7 @@ class BooleanSimplificationEnvGNN(BaseBooleanEnv):
 
         old_complexity = self._get_complexity(self.current_expression)
 
-        rule_func, rule_name, pattern, replacement = rules[action]
+        rule_func, name, pattern, replacement = rules[action]
         
         q = Queue()
         p = Process(target=_apply_rule_wrapper, args=(rule_func, self.current_expression, q, pattern, replacement))
@@ -158,7 +158,7 @@ class BooleanSimplificationEnvGNN(BaseBooleanEnv):
             if new_complexity > self.known_best_complexity:
                 reward -= 20.0
 
-        return self._get_state(), reward, done, {'applied_rule': rule_name}
+        return self._get_state(), reward, done, {'applied_rule': name}
 
     def get_gnn_input_size(self) -> int:
         return len(self.NODE_TYPES) + 3
