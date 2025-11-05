@@ -1,50 +1,46 @@
 # Reward Function Design Evolution
 
-This document outlines the iterative design process of the reward function for the Boolean Simplification RL environment.
+The reward function for the Boolean Simplification RL environment underwent three design iterations to address fundamental issues with reward engineering.
 
-## Version 1: The "One True Target" Fallacy
+## Version 1: Fixed Target Approach
 
-The initial reward function was based on a flawed premise: that there exists a single, canonical "simplest" form for any given boolean expression.
+The initial implementation assumed a canonical simplified form exists for each boolean expression.
 
-### Logic:
-1.  At the start of each episode, the environment would generate a random expression.
-2.  It would immediately use `sympy.simplify_logic` to generate a `target_simplified_expression`.
-3.  The agent's reward was heavily based on whether its `current_expression` matched the exact string representation of the `target_simplified_expression`.
-4.  Small rewards were given for reducing complexity, but the primary driver was matching the target.
+Method:
+1. Generate random expression at episode start
+2. Apply `sympy.simplify_logic` to establish `target_simplified_expression`
+3. Reward based on exact string match with target, with minor rewards for complexity reduction
 
-### The Flaw:
-Boolean algebra does not guarantee a unique simplest form. For example, `(A | B) & (A | C)` is logically equivalent to `A | (B & C)`. The `sympy` library would choose one, and the agent would be punished for finding the other, equally valid, simplified form. This created a brittle and often misleading goal.
-
----
-
-## Version 2: Principled Reward Shaping
-
-To address the "One True Target" fallacy, the reward system was redesigned to focus on the *property* of simplicity (i.e., low complexity) rather than a specific string representation.
-
-### Logic:
-1.  The concept of a `target_simplified_expression` was abolished.
-2.  Instead, `sympy.simplify_logic` was used at the start of an episode to calculate a `known_best_complexity`—a benchmark for the agent to beat.
-3.  The reward function was "shaped" to provide dense, informative signals to the agent:
-    *   **Goal Bonus:** A large, one-time reward (`+50.0`) for achieving a complexity less than or equal to the `known_best_complexity`.
-    *   **Shaped Progress Reward:** A continuous reward scaled by how much progress the agent made towards the goal (`(complexity_reduction / total_possible_reduction) * 10.0`).
-    *   **Penalties:** Explicit penalties for increasing complexity or for taking actions that resulted in no change.
-    *   **Efficiency Penalty:** A small, constant step penalty to encourage finding the shortest simplification path.
-
-### The Flaw (The Reward Hacking Exploit):
-This version introduced a subtle but critical exploit. The "Shaped Progress Reward" was based on the *total possible reduction from the start of the episode*. If the agent took an action that dramatically *increased* the complexity (e.g., from 17 to 62), it created a massive new "problem space." It could then make many small, easy simplifications on this new, larger expression. The sum of the small rewards for "cleaning up its own mess" far outweighed the penalty for creating it, leading to absurdly high scores for counterproductive behavior.
+Limitation:
+Boolean expressions have multiple equivalent simplified forms. The agent was penalized for discovering valid alternatives that differed from SymPy's choice, creating a brittle objective.
 
 ---
 
-## Version 3: Robust, Direct Reward
+## Version 2: Scaled Progress Reward
 
-The final version of the reward function was simplified to remove the scaling that enabled the reward hacking exploit. The reward is now based on the direct, immediate consequences of the agent's actions.
+The second iteration addressed the fixed target issue by rewarding based on complexity reduction rather than specific representations.
 
-### Logic:
-1.  **Direct Complexity Reward:** The base reward is simply `old_complexity - new_complexity`. This directly rewards simplification and penalizes increasing complexity.
-2.  **Goal Bonus:** The large, one-time bonus (`+50.0`) for achieving the `known_best_complexity` is retained.
-3.  **Penalties:**
-    *   A penalty (`-1.0`) is applied if the complexity does not change, discouraging no-op actions.
-    *   A small step penalty (`-0.1`) remains to encourage efficiency.
-    *   A large penalty (`-10.0`) is applied if the agent fails to solve the problem within the time limit.
+Method:
+1. Eliminate `target_simplified_expression`
+2. Calculate `known_best_complexity` from SymPy as performance benchmark
+3. Implement shaped reward function:
+    *   Goal bonus (+50.0) for achieving target complexity
+    *   Proportional reward based on reduction ratio
+    *   Penalties for increasing complexity or no change
+    *   Efficiency penalty for excessive steps
 
-This final design is simpler, more robust, and directly incentivizes the desired behavior (reducing complexity) without creating loopholes for the agent to exploit.
+Limitation:
+The ratio-based reward enabled exploitation. Agents could dramatically increase complexity to expand the "improvement space," then receive large rewards for subsequent simplifications, resulting in high scores for counterproductive behavior.
+
+---
+
+## Version 3: Direct Difference Reward
+
+The final implementation eliminates scaling to prevent reward hacking while maintaining effective training signals.
+
+Method:
+1. Base reward on direct difference: `old_complexity - new_complexity`
+2. Retain goal bonus (+50.0) for achieving target complexity
+3. Apply penalties for no change, inefficiency, and timeout
+
+The final design is robust against exploitation while directly incentivizing complexity reduction.

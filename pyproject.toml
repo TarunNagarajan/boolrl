@@ -4,7 +4,7 @@ build-backend = "setuptools"
 
 [project]
 name = "boolrl"
-version = "0.1.0"
+version = "1.0.0"
 description = "Boolean Expression Simplification using Deep Reinforcement Learning"
 readme = "README.md"
 requires-python = ">=3.8"
